@@ -72,6 +72,9 @@ build/
 # Netbeans
 nbproject
 
+# VS code
+.vscode/
+
 # astyle
 *.orig
 
