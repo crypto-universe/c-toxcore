@@ -77,7 +77,7 @@ static void test_one(void)
 
     tox_self_get_address(tox1, address);
     const size_t save_size = tox_get_savedata_size(tox1);
-    uint8_t* data = malloc(save_size);
+    uint8_t *const data = malloc(save_size);
     tox_get_savedata(tox1, data);
 
     tox_kill(tox2);

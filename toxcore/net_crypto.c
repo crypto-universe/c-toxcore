@@ -1074,7 +1074,7 @@ static int send_data_packet(Net_Crypto *c, int crypt_connection_id, const uint8_
     }
 
     const size_t packet_size = 1 + sizeof(uint16_t) + length + CRYPTO_MAC_SIZE;
-    uint8_t* const packet = calloc(packet_size, sizeof(uint8_t));
+    uint8_t *const packet = calloc(packet_size, sizeof(uint8_t));
     pthread_mutex_lock(&conn->mutex);
     packet[0] = NET_PACKET_CRYPTO_DATA;
     memcpy(packet + 1, conn->sent_nonce + (CRYPTO_NONCE_SIZE - sizeof(uint16_t)), sizeof(uint16_t));
@@ -1110,7 +1110,7 @@ static int send_data_packet_helper(Net_Crypto *c, int crypt_connection_id, uint3
     buffer_start = net_htonl(buffer_start);
     uint16_t padding_length = (MAX_CRYPTO_DATA_SIZE - length) % CRYPTO_MAX_PADDING;
     const size_t packet_size = sizeof(uint32_t) + sizeof(uint32_t) + padding_length + length;
-    uint8_t* const packet = calloc(packet_size, sizeof(uint8_t));
+    uint8_t *const packet = calloc(packet_size, sizeof(uint8_t));
     memcpy(packet, &buffer_start, sizeof(uint32_t));
     memcpy(packet + sizeof(uint32_t), &num, sizeof(uint32_t));
     memset(packet + (sizeof(uint32_t) * 2), PACKET_ID_PADDING, padding_length);

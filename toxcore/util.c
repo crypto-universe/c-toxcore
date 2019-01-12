@@ -54,10 +54,9 @@ void host_to_net(uint8_t *num, uint16_t numbytes)
 {
 #ifndef WORDS_BIGENDIAN
     const size_t num_of_iterations = numbytes / 2;
-    size_t i;
     uint8_t temp;
 
-    for (i = 0; i < num_of_iterations; ++i) {
+    for (size_t i = 0; i < num_of_iterations; ++i) {
         const size_t opposite_index = numbytes - i - 1;
         temp = num[i];
         num[i] = num[opposite_index];

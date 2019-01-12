@@ -1467,7 +1467,7 @@ static void kill_nonused_tcp(TCP_Connections *tcp_c)
     unsigned int i;
     unsigned int num_online = 0;
     unsigned int num_kill = 0;
-    unsigned int* const to_kill = malloc(tcp_c->tcp_connections_length * sizeof(unsigned int));
+    unsigned int *const to_kill = malloc(tcp_c->tcp_connections_length * sizeof(unsigned int));
 
     for (i = 0; i < tcp_c->tcp_connections_length; ++i) {
         TCP_con *tcp_con = get_tcp_connection(tcp_c, i);

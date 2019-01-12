@@ -789,7 +789,7 @@ int rtp_send_data(RTPSession *session, const uint8_t *data, uint32_t length,
     }
 
     const size_t packet_size = length + RTP_HEADER_SIZE + 1;
-    uint8_t* rdata = calloc(packet_size, sizeof(uint8_t));
+    uint8_t *const rdata = calloc(packet_size, sizeof(uint8_t));
     rdata[0] = session->payload_type;  // packet id == payload_type
 
     if (MAX_CRYPTO_DATA_SIZE > packet_size) {

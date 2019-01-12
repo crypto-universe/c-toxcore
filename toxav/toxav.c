@@ -769,7 +769,7 @@ bool toxav_audio_send_frame(ToxAV *av, uint32_t friend_number, const int16_t *pc
             goto RETURN;
         }
 
-        uint8_t* dest = malloc(sample_count + sizeof(sampling_rate)); /* This is more than enough always */
+        uint8_t *const dest = malloc(sample_count + sizeof(sampling_rate)); /* This is more than enough always */
 
         sampling_rate = net_htonl(sampling_rate);
         memcpy(dest, &sampling_rate, sizeof(sampling_rate));

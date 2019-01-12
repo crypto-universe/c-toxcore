@@ -232,7 +232,7 @@ START_TEST(test_dht_state_saveloadsave)
      * d) the second save() is of equal content */
     const size_t extra = 64;
     const size_t size = dht_size(m->dht);
-    uint8_t* const buffer = malloc((size + 2 * extra) * sizeof(uint8_t));
+    uint8_t *const buffer = malloc(size + 2 * extra);
     memset(buffer, 0xCD, extra);
     memset(buffer + extra + size, 0xCD, extra);
     dht_save(m->dht, buffer + extra);
@@ -258,7 +258,7 @@ START_TEST(test_dht_state_saveloadsave)
     ck_assert_msg(size == size2, "Messenger \"grew\" in size from a store/load cycle: %u -> %u", (unsigned)size,
                   (unsigned)size2);
 
-    uint8_t* const buffer2 = malloc(size2 * sizeof(uint8_t));
+    uint8_t *const buffer2 = malloc(size2);
     dht_save(m->dht, buffer2);
 
     ck_assert_msg(!memcmp(buffer + extra, buffer2, size), "DHT state changed by store/load/store cycle");
