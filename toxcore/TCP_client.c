@@ -168,10 +168,10 @@ static int proxy_http_generate_connection_request(TCP_Client_Connection *tcp_con
  */
 static int proxy_http_read_connection_response(TCP_Client_Connection *tcp_conn)
 {
-    char success[] = "200";
+    const char success[] = "200";
     uint8_t data[16]; // draining works the best if the length is a power of 2
 
-    int ret = read_TCP_packet(tcp_conn->sock, data, sizeof(data) - 1);
+    const int ret = read_TCP_packet(tcp_conn->sock, data, sizeof(data) - 1);
 
     if (ret == -1) {
         return 0;
@@ -181,11 +181,12 @@ static int proxy_http_read_connection_response(TCP_Client_Connection *tcp_conn)
 
     if (strstr((char *)data, success)) {
         // drain all data
-        unsigned int data_left = net_socket_data_recv_buffer(tcp_conn->sock);
+        const size_t data_left = net_socket_data_recv_buffer(tcp_conn->sock);
 
         if (data_left) {
-            VLA(uint8_t, temp_data, data_left);
+            uint8_t *const temp_data = malloc(data_left);
             read_TCP_packet(tcp_conn->sock, temp_data, data_left);
+            free(temp_data);
         }
 
         return 1;
@@ -440,18 +441,20 @@ static int write_packet_TCP_client_secure_connection(TCP_Client_Connection *con,
         }
     }
 
-    VLA(uint8_t, packet, sizeof(uint16_t) + length + CRYPTO_MAC_SIZE);
+    const size_t max_packet_size  = sizeof(uint16_t) + MAX_PACKET_SIZE;
+    const size_t real_packet_size = sizeof(uint16_t) + length + CRYPTO_MAC_SIZE;
+    uint8_t packet[max_packet_size];
 
     uint16_t c_length = net_htons(length + CRYPTO_MAC_SIZE);
     memcpy(packet, &c_length, sizeof(uint16_t));
     int len = encrypt_data_symmetric(con->shared_key, con->sent_nonce, data, length, packet + sizeof(uint16_t));
 
-    if ((unsigned int)len != (SIZEOF_VLA(packet) - sizeof(uint16_t))) {
+    if ((size_t)len != (real_packet_size - sizeof(uint16_t))) {
         return -1;
     }
 
     if (priority) {
-        len = sendpriority ? net_send(con->sock, packet, SIZEOF_VLA(packet)) : 0;
+        len = sendpriority ? net_send(con->sock, packet, real_packet_size) : 0;
 
         if (len <= 0) {
             len = 0;
@@ -459,14 +462,14 @@ static int write_packet_TCP_client_secure_connection(TCP_Client_Connection *con,
 
         increment_nonce(con->sent_nonce);
 
-        if ((unsigned int)len == SIZEOF_VLA(packet)) {
+        if ((size_t)len == real_packet_size) {
             return 1;
         }
 
-        return client_add_priority(con, packet, SIZEOF_VLA(packet), len);
+        return client_add_priority(con, packet, real_packet_size, len);
     }
 
-    len = net_send(con->sock, packet, SIZEOF_VLA(packet));
+    len = net_send(con->sock, packet, real_packet_size);
 
     if (len <= 0) {
         return 0;
@@ -474,12 +477,12 @@ static int write_packet_TCP_client_secure_connection(TCP_Client_Connection *con,
 
     increment_nonce(con->sent_nonce);
 
-    if ((unsigned int)len == SIZEOF_VLA(packet)) {
+    if ((size_t)len == real_packet_size) {
         return 1;
     }
 
-    memcpy(con->last_packet, packet, SIZEOF_VLA(packet));
-    con->last_packet_length = SIZEOF_VLA(packet);
+    memcpy(con->last_packet, packet, real_packet_size);
+    con->last_packet_length = (uint16_t)real_packet_size;
     con->last_packet_sent = len;
     return 1;
 }
@@ -529,10 +532,13 @@ int send_data(TCP_Client_Connection *con, uint8_t con_id, const uint8_t *data, u
         return 0;
     }
 
-    VLA(uint8_t, packet, 1 + length);
+    const size_t packet_size = 1 + length;
+    uint8_t *const packet = malloc(packet_size);
     packet[0] = con_id + NUM_RESERVED_PORTS;
     memcpy(packet + 1, data, length);
-    return write_packet_TCP_client_secure_connection(con, packet, SIZEOF_VLA(packet), 0);
+    const int result = write_packet_TCP_client_secure_connection(con, packet, packet_size, 0);
+    free(packet);
+    return result;
 }
 
 /* return 1 on success.
@@ -545,11 +551,13 @@ int send_oob_packet(TCP_Client_Connection *con, const uint8_t *public_key, const
         return -1;
     }
 
-    VLA(uint8_t, packet, 1 + CRYPTO_PUBLIC_KEY_SIZE + length);
+    const size_t max_packet_size  = 1 + CRYPTO_PUBLIC_KEY_SIZE + TCP_MAX_OOB_DATA_LENGTH;
+    const size_t real_packet_size = 1 + CRYPTO_PUBLIC_KEY_SIZE + length;
+    uint8_t packet[max_packet_size];
     packet[0] = TCP_PACKET_OOB_SEND;
     memcpy(packet + 1, public_key, CRYPTO_PUBLIC_KEY_SIZE);
     memcpy(packet + 1 + CRYPTO_PUBLIC_KEY_SIZE, data, length);
-    return write_packet_TCP_client_secure_connection(con, packet, SIZEOF_VLA(packet), 0);
+    return write_packet_TCP_client_secure_connection(con, packet, real_packet_size, 0);
 }
 
 
@@ -663,10 +671,16 @@ int send_disconnect_request(TCP_Client_Connection *con, uint8_t con_id)
  */
 int send_onion_request(TCP_Client_Connection *con, const uint8_t *data, uint16_t length)
 {
-    VLA(uint8_t, packet, 1 + length);
+    /* TODO(crypto-universe): two memory allocations in a row:
+     * here and in write_packet_TCP_client_secure_connection.
+     * Can we do it better (for example like skb in linux kernel)? */
+    const size_t packet_size = 1 + length;
+    uint8_t *const packet = malloc(packet_size);
     packet[0] = TCP_PACKET_ONION_REQUEST;
     memcpy(packet + 1, data, length);
-    return write_packet_TCP_client_secure_connection(con, packet, SIZEOF_VLA(packet), 0);
+    const int result = write_packet_TCP_client_secure_connection(con, packet, packet_size, 0);
+    free(packet);
+    return result;
 }
 
 void onion_response_handler(TCP_Client_Connection *con, tcp_onion_response_cb *onion_callback, void *object)
